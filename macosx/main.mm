@@ -1,5 +1,4 @@
 #include <mbgl/platform/log.hpp>
-#include "../platform/default/default_styles.hpp"
 #include <mbgl/platform/platform.hpp>
 #include <mbgl/platform/darwin/settings_nsuserdefaults.hpp>
 #include <mbgl/platform/darwin/reachability.h>
@@ -9,14 +8,14 @@
 #include <mbgl/storage/network_status.hpp>
 
 #include <mbgl/util/geo.hpp>
+#include <mbgl/util/default_styles.hpp>
 
 #import <Foundation/Foundation.h>
 
 #pragma GCC diagnostic push
-#ifndef __clang__
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #pragma GCC diagnostic ignored "-Wshadow"
-#endif
 #include <boost/program_options.hpp>
 #pragma GCC diagnostic pop
 
@@ -173,23 +172,23 @@ int main(int argc, char* argv[]) {
     view.setChangeStyleCallback([&map, &view] () {
         static uint8_t currentStyleIndex;
 
-        if (++currentStyleIndex == mbgl::util::defaultStyles.size()) {
+        if (++currentStyleIndex == mbgl::util::default_styles::numOrderedStyles) {
             currentStyleIndex = 0;
         }
 
-        const auto& newStyle = mbgl::util::defaultStyles[currentStyleIndex];
-        map.setStyleURL(newStyle.first);
-        view.setWindowTitle(newStyle.second);
+        mbgl::util::default_styles::DefaultStyle newStyle = mbgl::util::default_styles::orderedStyles[currentStyleIndex];
+        map.setStyleURL(newStyle.url);
+        view.setWindowTitle(newStyle.name);
 
-        mbgl::Log::Info(mbgl::Event::Setup, std::string("Changed style to: ") + newStyle.first);
+        mbgl::Log::Info(mbgl::Event::Setup, "Changed style to: %s", newStyle.name);
     });
 
 
     // Load style
     if (style.empty()) {
-        const auto& newStyle = mbgl::util::defaultStyles.front();
-        style = newStyle.first;
-        view.setWindowTitle(newStyle.second);
+        mbgl::util::default_styles::DefaultStyle newStyle = mbgl::util::default_styles::orderedStyles[0];
+        style = newStyle.url;
+        view.setWindowTitle(newStyle.name);
     }
 
     map.setStyleURL(style);

@@ -3,6 +3,7 @@
 
 #include <mbgl/text/glyph.hpp>
 #include <mbgl/util/noncopyable.hpp>
+#include <mbgl/storage/request_holder.hpp>
 
 #include <atomic>
 #include <functional>
@@ -41,10 +42,10 @@ private:
 
     void parse(GlyphStore* store, const std::string& fontStack, const std::string& url);
 
-    std::string data;
+    std::shared_ptr<const std::string> data;
     std::atomic<bool> parsed;
 
-    Request* req = nullptr;
+    RequestHolder req;
 
     Observer* observer = nullptr;
 };

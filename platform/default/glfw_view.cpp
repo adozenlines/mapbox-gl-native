@@ -1,6 +1,6 @@
 #include <mbgl/annotation/point_annotation.hpp>
 #include <mbgl/annotation/shape_annotation.hpp>
-#include <mbgl/annotation/sprite_image.hpp>
+#include <mbgl/sprite/sprite_image.hpp>
 #include <mbgl/platform/default/glfw_view.hpp>
 #include <mbgl/platform/gl.hpp>
 #include <mbgl/platform/log.hpp>
@@ -213,7 +213,7 @@ void GLFWView::addRandomPointAnnotations(int count) {
     std::vector<mbgl::PointAnnotation> points;
 
     for (int i = 0; i < count; i++) {
-        points.emplace_back(makeRandomPoint(), "default_marker");
+        points.emplace_back(makeRandomPoint(), "marker-15");
     }
 
     auto newIDs = map->addPointAnnotations(points);
@@ -223,11 +223,8 @@ void GLFWView::addRandomPointAnnotations(int count) {
 void GLFWView::addRandomShapeAnnotations(int count) {
     std::vector<mbgl::ShapeAnnotation> shapes;
 
-    mbgl::FillProperties fillProperties;
-    fillProperties.opacity = .1;
-
-    mbgl::StyleProperties properties;
-    properties.set<mbgl::FillProperties>(fillProperties);
+    mbgl::FillAnnotationProperties properties;
+    properties.opacity = .1;
 
     for (int i = 0; i < count; i++) {
         mbgl::AnnotationSegment triangle;
@@ -282,7 +279,7 @@ void GLFWView::onScroll(GLFWwindow *window, double /*xOffset*/, double yOffset) 
         scale = 1.0 / scale;
     }
 
-    view->map->scaleBy(scale, view->lastX, view->lastY);
+    view->map->scaleBy(scale, { view->lastX, view->lastY });
 }
 
 void GLFWView::onWindowResize(GLFWwindow *window, int width, int height) {
@@ -316,9 +313,9 @@ void GLFWView::onMouseClick(GLFWwindow *window, int button, int action, int modi
             double now = glfwGetTime();
             if (now - view->lastClick < 0.4 /* ms */) {
                 if (modifiers & GLFW_MOD_SHIFT) {
-                    view->map->scaleBy(0.5, view->lastX, view->lastY, std::chrono::milliseconds(500));
+                    view->map->scaleBy(0.5, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
                 } else {
-                    view->map->scaleBy(2.0, view->lastX, view->lastY, std::chrono::milliseconds(500));
+                    view->map->scaleBy(2.0, { view->lastX, view->lastY }, std::chrono::milliseconds(500));
                 }
             }
             view->lastClick = now;
@@ -332,10 +329,13 @@ void GLFWView::onMouseMove(GLFWwindow *window, double x, double y) {
         double dx = x - view->lastX;
         double dy = y - view->lastY;
         if (dx || dy) {
-            view->map->moveBy(dx, dy);
+            double flippedY = view->height - y;
+            view->map->setLatLng(
+                    view->map->latLngForPixel(mbgl::PrecisionPoint(x - dx, flippedY + dy)),
+                    mbgl::PrecisionPoint(x, flippedY));
         }
     } else if (view->rotating) {
-        view->map->rotateBy(view->lastX, view->lastY, x, y);
+        view->map->rotateBy({ view->lastX, view->lastY }, { x, y });
     }
     view->lastX = x;
     view->lastY = y;
@@ -350,9 +350,8 @@ void GLFWView::run() {
             map->renderSync();
             report(1000 * (glfwGetTime() - started));
             if (benchmark) {
-                map->setNeedsRepaint();
+                map->update(mbgl::Update::Repaint);
             }
-            map->nudgeTransitions();
         }
     }
 }
@@ -386,7 +385,11 @@ void GLFWView::invalidate() {
     glfwPostEmptyEvent();
 }
 
-void GLFWView::swap() {
+void GLFWView::beforeRender() {
+    // no-op
+}
+
+void GLFWView::afterRender() {
     glfwSwapBuffers(window);
 }
 

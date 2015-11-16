@@ -5,11 +5,13 @@
 #include <mbgl/map/tile_data.hpp>
 #include <mbgl/map/tile_cache.hpp>
 #include <mbgl/style/types.hpp>
+#include <mbgl/storage/request_holder.hpp>
 
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/util/mat4.hpp>
 #include <mbgl/util/ptr.hpp>
 #include <mbgl/util/chrono.hpp>
+#include <mbgl/util/constants.hpp>
 
 #include <rapidjson/document.h>
 
@@ -36,7 +38,7 @@ public:
     SourceType type = SourceType::Vector;
     std::string url;
     std::vector<std::string> tiles;
-    uint16_t tile_size = 512;
+    uint16_t tile_size = util::tileSize;
     uint16_t min_zoom = 0;
     uint16_t max_zoom = 22;
     std::string attribution;
@@ -77,8 +79,6 @@ public:
                 TexturePool&,
                 bool shouldReparsePartialTiles);
 
-    void invalidateTiles(const std::unordered_set<TileID, TileID::Hash>&);
-
     void updateMatrices(const mat4 &projMatrix, const TransformState &transform);
     void drawClippingMasks(Painter &painter);
     void finishRender(Painter &painter);
@@ -90,6 +90,7 @@ public:
     void onLowMemory();
 
     void setObserver(Observer* observer);
+    void dumpDebugLogs() const;
 
     SourceInfo info;
     bool enabled;
@@ -104,7 +105,7 @@ private:
 
     bool handlePartialTile(const TileID &id, Worker &worker);
     bool findLoadedChildren(const TileID& id, int32_t maxCoveringZoom, std::forward_list<TileID>& retain);
-    bool findLoadedParent(const TileID& id, int32_t minCoveringZoom, std::forward_list<TileID>& retain);
+    void findLoadedParent(const TileID& id, int32_t minCoveringZoom, std::forward_list<TileID>& retain);
     int32_t coveringZoomLevel(const TransformState&) const;
     std::forward_list<TileID> coveringTiles(const TransformState&) const;
 
@@ -129,7 +130,7 @@ private:
     std::map<TileID, std::weak_ptr<TileData>> tile_data;
     TileCache cache;
 
-    Request* req = nullptr;
+    RequestHolder req;
     Observer* observer_ = nullptr;
 };
 

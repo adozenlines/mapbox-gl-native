@@ -54,7 +54,7 @@ public:
     bool isLoaded() const;
 
     double getTopOffsetPixelsForAnnotationSymbol(const std::string& symbol);
-    void updateAnnotationTiles(const std::unordered_set<TileID, TileID::Hash>&);
+    void updateAnnotations();
 
     void setSourceTileCacheSize(size_t size);
     void onLowMemory();
@@ -67,14 +67,14 @@ public:
     void onTileDataChanged() override;
     void onResourceLoadingFailed(std::exception_ptr error) override;
 
+    void dumpDebugLogs() const;
+
 private:
     // Update the state indicated by the accumulated Update flags, then render.
     void update();
 
     // Loads the actual JSON object an creates a new Style object.
     void loadStyleJSON(const std::string& json, const std::string& base);
-
-    void invalidateView();
 
     View& view;
     MapData& data;
@@ -83,6 +83,7 @@ private:
 
     Update updateFlags = Update::Nothing;
     std::unique_ptr<uv::async> asyncUpdate;
+    std::unique_ptr<uv::async> asyncInvalidate;
 
     std::unique_ptr<TexturePool> texturePool;
     std::unique_ptr<Painter> painter;
@@ -91,13 +92,12 @@ private:
     std::string styleURL;
     std::string styleJSON;
 
-    Request* styleRequest = nullptr;
+    RequestHolder styleRequest;
 
     Map::StillImageCallback callback;
     size_t sourceCacheSize;
     TransformState transformState;
     FrameData frameData;
-    bool viewInvalidated;
 };
 
 }
